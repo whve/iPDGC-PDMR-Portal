@@ -1,12 +1,98 @@
+# download functionss
+ForestDL.Function <- function() {
+  dat.temp <- fread(paste0("www/dataForestPlot_PD_", sub(".*(20\\d\\d).*", "\\1", input$outcome), ".csv"))
+  dat.temp <- dat.temp[dat.temp$Exposure==input$trait]# & dat.Temptemp$Outcome==input$outcome)
+  res <- as.character(dat.temp$SNP) %in% c("All - Inverse variance weighted", "All - MR Egger", "All - Weighted median")
+  dat.temp.res <- dat.temp[res,]
+  dat.temp <- dat.temp[!res,]
+  dat.temp <- transform(dat.temp, SNP = reorder(SNP, b) )
+  dat <- rbind(dat.temp.res, dat.temp)
+  dat$highlight <- ifelse(
+    grepl("^All.+", dat$SNP),
+    ifelse(
+      dat$b > 0,
+      "protective",
+      "risk"
+    ),
+    "normal")
+  mycolours <- c("risk" = "red", "protective" = "seagreen4", "normal" = "black")
+  
+  # numCol <- round(isolate(window.size.slow()/200))
+  # construct the plot
+  ggplot(data = dat,
+         aes(x = SNP,
+             y = b,
+             ymin = Lower95,
+             ymax = Upper95)
+  ) +
+    scale_color_manual("Status", values = mycolours) +
+    geom_pointrange(
+      aes(col = highlight,
+          ymin = Lower95,
+          ymax = Upper95),
+      cex = 0.7
+    ) +
+    geom_hline(
+      yintercept = 0,
+      linetype = 2) +
+    # geom_errorbar(
+    #   width = 0,
+    #   aes(
+    #     ymin = Lower95,
+    #     ymax = Upper95,
+    #     col = highlight
+    #   ),
+    #   cex = 1) +
+    ggtitle(paste(input$trait, 'vs', input$outcome)) +
+    theme(plot.title = forest.Plot.Title.DL.Key(),
+          axis.text.y = element_text(size = 8,
+                                     face = 'bold'),
+          axis.ticks.y = element_blank(),
+          axis.text.x = element_text(face="bold"),
+          axis.title = element_text(size = 16,
+                                    face="bold"),
+          legend.position = "none"
+    ) +
+    xlab('SNP') +
+    ylab("Beta Coefficient (95% Confidence Interval)") +
+    coord_flip()
+}
+
+FunnelDL.Function <- function(){
+  dat.Temp <- fread(paste0("www/dataForestPlot_PD_", sub(".*(20\\d\\d).*", "\\1", input$outcome), ".csv"))
+  dat <- dat.Temp[dat.Temp$Exposure==input$trait]# & dat.Temptemp$Outcome==input$outcome)
+  
+  dat$`1/SE` <- 1/as.numeric(dat$se)
+  funnelplotlines <- dat[grepl("All", dat$SNP)]
+  dat <- dat[!grepl("^All - ", dat$SNP)]
+  plot(dat$b, dat$`1/SE`, xlab = expression('β'["IV"]), ylab = expression("1/SE"["IV"]), main = funnel.Plot.Title.DL.Key())
+  abline(v = funnelplotlines[grepl("All - Inverse variance weighted", funnelplotlines$SNP)][1,c("b")], col="blue", lwd = 2)
+  abline(v = funnelplotlines[grepl("All - MR Egger", funnelplotlines$SNP)][1,c("b")], col="#ff5e5e", lwd = 2)
+  abline(v = funnelplotlines[grepl("All - Weighted median", funnelplotlines$SNP)][1,c("b")], col="#f2c71d", lwd = 2)
+}
+
 # DownloadHandlers for the forest plot
 output$FoPlotDLTIFF <- downloadHandler(
   filename = function() {
     paste('PD_MR_ForestPlot-', Sys.Date(), '.tiff', sep='')
   },
   content = function(file) {
-    tiff(file, bg = input$fobg, width = input$FoDLplotw, height = input$FoDLploth, units = "in", compression = "none", res = 600)
-    ForestDL.Function()
-    dev.off()
+    ggsave(file, plot = ForestDL.Function(), device = tiff(), bg = input$fobg, width = input$FoDLplotw, height = input$FoDLploth, units = "in", compression = "none", dpi = 600, limitsize = F)
+    # tiff(file, bg = input$fobg, width = input$FoDLplotw, height = input$FoDLploth, units = "in", compression = "none", res = 600)
+    # ForestDL.Function()
+    # dev.off()
+  }
+)
+
+output$FoPlotDLPNG <- downloadHandler(
+  filename = function() {
+    paste('PD_MR_ForestPlot-', Sys.Date(), '.png', sep='')
+  },
+  content = function(file) {
+    ggsave(file, plot = ForestDL.Function(), device = "png", bg = input$fobg, width = input$FoDLplotw, height = input$FoDLploth, units = "in", dpi = 600, limitsize = F)
+    # tiff(file, bg = input$fobg, width = input$FoDLplotw, height = input$FoDLploth, units = "in", compression = "none", res = 600)
+    # ForestDL.Function()
+    # dev.off()
   }
 )
 
@@ -15,9 +101,10 @@ output$FoPlotDLPDF <- downloadHandler(
     paste('PD_MR_ForestPlot-', Sys.Date(), '.pdf', sep='')
   },
   content = function(file) {
-    cairo_pdf(file, bg = input$fobg, width = input$FoDLplotw, height = input$FoDLploth)
-    ForestDL.Function()
-    dev.off()
+    ggsave(file, plot = ForestDL.Function(), bg = input$fobg, width = input$FoDLplotw, height = input$FoDLploth, device = cairo_pdf)
+    # cairo_pdf(file, bg = input$fobg, width = input$FoDLplotw, height = input$FoDLploth)
+    # ForestDL.Function()
+    # dev.off()
   }
 )
 
@@ -26,9 +113,10 @@ output$FoPlotDLSVG <- downloadHandler(
     paste('PD_MR_ForestPlot-', Sys.Date(), '.svg', sep='')
   },
   content = function(file) {
-    svg(file, bg = input$fobg, width = input$FoDLplotw, height = input$FoDLploth)
-    ForestDL.Function()
-    dev.off()
+    ggsave(file, plot = ForestDL.Function(), bg = input$fobg, width = input$FoDLplotw, height = input$FoDLploth, device = svg)
+    # svg(file, bg = input$fobg, width = input$FoDLplotw, height = input$FoDLploth)
+    # ForestDL.Function()
+    # dev.off()
   }
 )
 
@@ -39,6 +127,17 @@ output$FuPlotDLTIFF <- downloadHandler(
   },
   content = function(file) {
     tiff(file, bg = input$fubg, width = input$FuDLplotw, height = input$FuDLploth, units = "in", compression = "none", res = 600)
+    FunnelDL.Function()
+    dev.off()
+  }
+)
+
+output$FuPlotDLPNG <- downloadHandler(
+  filename = function() {
+    paste('PD_MR_FunnelPlot-', Sys.Date(), '.png', sep='')
+  },
+  content = function(file) {
+    png(file, bg = input$fubg, width = input$FuDLplotw, height = input$FuDLploth, units = "in", res = 600)
     FunnelDL.Function()
     dev.off()
   }
@@ -205,9 +304,7 @@ output$qkDLforestplot <- downloadHandler(
     paste('PD_MR_ForestPlot-', Sys.Date(), '.pdf', sep='')
   },
   content = function(file) {
-    cairo_pdf(file, width = 8.5, height = 11)
-    ForestDL.Function()
-    dev.off()
+    ggsave(file, plot = ForestDL.Function(), width = 8.5, height = 11, device = cairo_pdf)
   }
 )
 

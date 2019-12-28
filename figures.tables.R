@@ -5,24 +5,53 @@
 output$forestplot <- renderPlot({
   req(window.size.slow())
   req(forest.reactive())
-  dat <- forest.reactive()
-  summaryLength <- length(dat$SNP[grepl("^All", dat$SNP)])
-  len <- nrow(dat[,3])
-  labelSize <- ifelse(len<30,1,0.35)
-  summary <- c(rep.int(FALSE,len-3),TRUE, TRUE, TRUE)
-  if(summaryLength == 3){summary <- c(rep.int(FALSE,len-3),TRUE, TRUE, TRUE)}
-  if(summaryLength == 2){summary <- c(rep.int(FALSE,len-2),TRUE, TRUE)}
-  if(summaryLength == 1){summary <- c(rep.int(FALSE,len-1),TRUE)}
-  IVW <- dat[dat$SNP == "All - Inverse variance weighted"]
-  if(IVW$b > 0){clrs <- fpColors(box="royalblue",line="darkblue",summary="red")}else{clrs <- fpColors(box="royalblue",line="darkblue",summary="darkgreen")}
+  dat.temp <- forest.reactive()
+  # sort the data so that SNPs are in order of beta and summary statistics are at the bottom
+  res <- as.character(dat.temp$SNP) %in% c("All - Inverse variance weighted", "All - MR Egger", "All - Weighted median")
+  dat.temp.res <- dat.temp[res,]
+  dat.temp <- dat.temp[!res,]
+  dat.temp <- transform(dat.temp, SNP = reorder(SNP, b) )
+  dat <- rbind(dat.temp.res, dat.temp)
+  dat$highlight <- ifelse(
+    grepl("^All.+", dat$SNP),
+    ifelse(
+      dat$b > 0,
+      "risk",
+      "protective"
+      ),
+    "normal")
+  mycolours <- c("risk" = "red", "protective" = "seagreen4", "normal" = "black")
+  
   #construct the plot
-  forestplot(labeltext=dat$SNP, 
-             txt_gp = fpTxtGp(label=gpar(cex=labelSize), ticks=gpar(cex=labelSize)),
-             mean=dat$b, 
-             lower=dat$Lower95, 
-             upper=dat$Upper95,
-             is.summary=summary,
-             col=clrs)
+  ggplot(data=dat,
+         aes(x = SNP,
+             y = b,
+             ymin = Lower95,
+             ymax = Upper95)
+  ) +
+    scale_color_manual("Status", values = mycolours) +
+    geom_pointrange(
+      aes(col = highlight,
+          ymin = Lower95,
+          ymax = Upper95),
+      cex = 0.7
+    ) +
+    geom_hline(
+               yintercept = 0,
+               linetype = 2) +
+    theme(plot.title = element_text(size = 20,
+                                    face = "bold"),
+          axis.text.y = element_text(size = 8,
+                                     face = 'bold'),
+          axis.ticks.y = element_blank(),
+          axis.text.x = element_text(face="bold"),
+          axis.title = element_text(size = 16,
+                                    face="bold"),
+          legend.position = "none"
+    ) +
+    xlab('SNP') +
+    ylab("Beta Coefficient (95% Confidence Interval)") +
+    coord_flip()
 },
 width = function()
   {
@@ -32,9 +61,9 @@ width = function()
   },
 height = function() {
   req(input$execute)
-  heightout <- ifelse(nrow(forest.reactive())*50 > 1000, 1000, nrow(forest.reactive())*50)
+  heightout <- ifelse(nrow(forest.reactive())*50 > 1000, 1500, nrow(forest.reactive())*50)
   return(heightout)
-}) #"700")
+})
 
 output$funnelplot <- renderPlot({
   req(window.size.slow())

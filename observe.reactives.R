@@ -36,11 +36,15 @@ forest.reactive <- eventReactive(input$execute,
                                    #select data for the selected trait
                                    dat <- isolate(dat.Temp[dat.Temp$Exposure==input$trait])
                                    
-                                   #sort the data so that SNPs are in order and summary statistics are at the bottom
-                                   dat <- dat[order(-as.numeric(as.factor(dat$SNP))),]
-                                   
                                    #stops plotting if no data
-                                   req(nrow(dat) >0 )
+                                   req(nrow(dat) > 0)
+                                   
+                                   # #sort the data so that SNPs are in order and summary statistics are at the bottom
+                                   # dat <- dat[order(-as.numeric(dat$b))]
+                                   # res <- as.character(dat$SNP) %in% c("All - Inverse variance weighted", "All - MR Egger", "All - Weighted median")
+                                   # dat <- rbind(dat[!res,], dat[res,])
+                                   # #dat <- dat[order(-as.numeric(as.factor(dat$SNP))),]
+                                   
                                    return(dat)
                                  }
 )
@@ -108,7 +112,7 @@ preerrorNotification <- eventReactive(input$execute,
                                                               "snp" = "Less than 10 instrumental variables detected.",
                                                               "snp+na" = c("Less than 10 instrumental variables detected.", "Number of case-participants in the exposure study is missing. If the exposure is a continuous trait, please ignore."),
                                                               "snp+lowcase" = c("Less than 10 instrumental variables detected.", "Less than 250 participants in the exposure study."),
-                                                              "na" = "Number of case-participants in the exposure study is missing. If the exposure is a continuous trait, please ignore.",
+                                                              "na" = "Number of case-participants in the exposure study is missing. If the selected exposure is a continuous trait, please ignore this warning.",
                                                               "lowcase" = "Less than 250 case-participants in the exposure study."
                                                )
                                                
@@ -128,3 +132,21 @@ preerrorNotification <- eventReactive(input$execute,
                                              })
                                       }
                                       )
+
+forest.Plot.Title.DL.Key <- reactive({             
+  if (input$forestTitle) {
+    element_text(size = 16,
+                 face = "bold")
+  } else {
+    element_blank()
+  }
+}
+)
+
+funnel.Plot.Title.DL.Key <- reactive({
+  if (input$funnelTitle) {
+    paste(input$trait, 'vs', input$outcome)
+  } else {
+    NULL
+  }
+})

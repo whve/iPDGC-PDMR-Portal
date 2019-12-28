@@ -1,3 +1,4 @@
+#deployApp(appName = "MRportal", account = "pdgenetics", appFileManifest = "appFileManifest.txt")
 library(shiny)
 library(forestplot)
 library(dplyr)
@@ -9,6 +10,7 @@ library(shinyBS)
 library(shinyLP)
 library(shinyjs)
 library(shinyanimate)
+library(ggplot2)
 options(xtable.floating = T)
 options(xtable.timestamp = "")
 
